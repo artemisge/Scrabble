@@ -34,8 +34,6 @@ class SakClass:
     def __init__(self):
         self.sak = []
         for letter in self.letters:
-            if (len(self.sak) > 20):
-                break
             n = self.letters[letter][0]
             for i in range(n):
                 self.sak.append(letter)
@@ -55,9 +53,6 @@ class SakClass:
         for l in letters:
             self.sak.append(l)
         self.randomize_sak()
-
-    def printsak(self):
-        print(self.sak)
 
     def getwordvalue(self, word):
         value = 0
@@ -123,7 +118,6 @@ class Computer(Player):
     def play(self, letters, mode):
         # letters: available letters
         # mode: MIN, MAX, SMART
-        print(letters)
         words = list(self.getPermutations(letters))
         if (mode == "MIN"):
             for w in words:
@@ -133,19 +127,17 @@ class Computer(Player):
             return # return nothing if no word is found
         if (mode == "MAX"):
             for w in reversed(words):
-                if (super().isWordAccepted(w)):
-                    return w
+                strw = self.listToString(w)
+                if (self.isWordAccepted(strw)):
+                    return strw
             return
         else:
-            value = 0
-            finalword = 'pass'
+            wordlist = []
             for w in words:
-                if (super().isWordAccepted(w)):
-                    newvalue = SakClass.getwordvalue(w)
-                    if (value < newvalue):
-                        value = newvalue
-                        finalword = w
-            return finalword
+                strw = self.listToString(w)
+                if (self.isWordAccepted(strw)):
+                    wordlist.append(strw)
+            return wordlist
 
     def getPermutations(self, letters):
         perms = []
@@ -187,6 +179,7 @@ class Game:
             elif (userinput == '3'):
                 input("Το παιχνίδι θα ξεκινήσει. Είσαι έτοιμος; (Πάτα ENTER)")
                 self.setup()
+                print(self.moves)
                 condition = self.start()
                 if (condition != "quit"):
                     self.announceWinner()
@@ -195,17 +188,19 @@ class Game:
                 print("Δεν υπάρχει αυτή η επιλογή. Δοκίμασε ξανά.")
             userinput = self.menu()
         
-
     def start(self):
         # μονός: υπολογιστής
         # ζυγός: παίκτης
-        while (len(self.sak.sak) > 0): #kai alles sunthikes
+        while (len(self.sak.sak) > 0):
             print("_______________________________________")
             if (self.moves % 2 == 0):
                 # player
                 print("Στο σακουλάκι: {} γράμματα. \nΠαίζεις. Διαθέσιμα Γράμματα:".format(len(self.sak.sak)))
+
                 print(self.getLettersAndValues(self.player.availableLetters))
+
                 word = self.player.play(self.player.availableLetters)
+
                 if (word == "p"):
                     if (len(self.sak.sak) < 7):
                         # δεν υπάρχουν αρκετά γράμματα
@@ -233,7 +228,20 @@ class Game:
                 # computer
                 print("Στο σακουλάκι: {} γράμματα. \nΠαίζει ο υπολογιστής. Διαθέσιμα Γράμματα:".format(len(self.sak.sak)))
                 print(self.getLettersAndValues(self.computer.availableLetters))
+
                 word = self.computer.play(self.computer.availableLetters, self.settings)
+
+                if (self.settings == "SMART"):
+                    # SMART mode
+                    value = 0
+                    finalword = "pass"
+                    for w in word:
+                        newvalue = self.sak.getwordvalue(w)
+                        if (value < newvalue):
+                            value = newvalue
+                            finalword = w
+                    word = finalword
+
                 if (word == "pass"):
                     if (len(self.sak.sak) < 7):
                         # δεν υπάρχουν αρκετά γράμματα
@@ -254,6 +262,7 @@ class Game:
                 self.computer.availableLetters += self.sak.getletters(7 - len(self.computer.availableLetters))
             self.moves += 1
             print("Νέο σκορ: (Εσύ){} - (Υπολογιστής){}".format(self.playerScore, self.computerScore))
+            input("ENTER για συνέχεια")
 
     def announceWinner(self):
         print("Το παιχνίδι τελείωσε με σκορ (Εσύ){}/(Υπολογιστής){}.".format(self.playerScore, self.computerScore))
@@ -273,7 +282,6 @@ class Game:
 
     def end(self):
         # save in json
-        print("Αποθήκευση στατιστικών...")
         with open('score.json') as json_file:
             data = json.load(json_file)
             newentry = '"moves": {}, "player": {}, "computer": {}'.format(self.moves, self.playerScore, self.computerScore)
@@ -289,8 +297,8 @@ class Game:
 1) ΜΙΝ: την πρώτη μικρότερη λέξη που θα βρει
 2) ΜΑΧ: την πρώτη μεγαλύτερη λέξη που θα βρει
 3) SMART: την λέξη με τους περισσότερους πόντους
-Πληκτρολόγησε 1, 2 ή 3
->>> """)
+Πληκτρολόγησε 1, 2 ή 3 (τρέχον ρύθμιση: {})
+>>> """.format(self.settings))
         if (userinput == '1'):
             self.settings = "MIN"
         elif (userinput == '2'):
@@ -299,7 +307,8 @@ class Game:
             self.settings = "SMART"
         else:
             print("Αυτή η επιλογή δεν υπάρχει. Οι ρυθμίσεις δεν θα αλλάξουν και θα επιστρέψετε στο κυρίως μενού.")
-        print(self.settings)
+            return
+        print("Ο υπολογιστής θα  παίζει πλέον με τον τρόπο: " + self.settings)
 
     def menu(self):
         return input("""~~~~ SCRABBLE ~~~~
@@ -315,7 +324,9 @@ __________________
         with open('score.json') as json_file:
             data = json.load(json_file)
             print('_____ΣΚΟΡ ΑΝΑ ΠΑΙΧΝΙΔΙ_____')
+            if (len(data) == 0):
+                print("Δεν υπάρχουν διαθέσιμα παιχνίδια.")
             for i in range(len(data)):
-                print("{}) εσύ: {}  | υπολογιστής: {}  | συνολικές κινήσεις: {}".format(i+1, data[i]["moves"], data[i]["player"], data[i]["computer"]))
+                print("{}) εσύ: {}  | υπολογιστής: {}  | συνολικές κινήσεις: {}".format(i+1,  data[i]["player"], data[i]["computer"], data[i]["moves"]))
 
         input("Πάτα ENTER για να επιστρέψεις στο μενού...")
