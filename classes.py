@@ -1,7 +1,7 @@
 import random
 import itertools
 import copy
-
+import json
 
 class SakClass:
     letters = {
@@ -34,6 +34,8 @@ class SakClass:
     def __init__(self):
         self.sak = []
         for letter in self.letters:
+            if (len(self.sak) > 20):
+                break
             n = self.letters[letter][0]
             for i in range(n):
                 self.sak.append(letter)
@@ -84,7 +86,6 @@ class Player:
 
     def isWordAccepted(self, word):
         tmp = word in self.acceptedWords
-        print("word {} accepted: {}".format(word, tmp))
         return word in self.acceptedWords
 
 
@@ -93,15 +94,15 @@ class Human(Player):
         super().__init__()
 
     def play(self, word):
-        word = input("Πληκτρολόγησε την λέξη σου. Αν δεν βρίσκεις μπορείς να πας πάσο πληκτρολογώντας 'p'.\n>>> ")
-        while (word != 'p'):
+        word = input("Πληκτρολόγησε την λέξη σου. Αν δεν βρίσκεις μπορείς να πας πάσο πληκτρολογώντας 'p' ή 'q' για να σταματήσεις.\n>>> ")
+        while (word != 'p' and word != 'q'):
             if (self.checkWord(word, self.availableLetters)):
                 if (self.isWordAccepted(word)):
                     return word
                 else:
-                    word = input("Η λέξη σου δεν υπάρχει στο λεξικό. Ξαναδοκίμασε ή αν δεν βρίσκεις λέξη μπορείς να πας πάσο πληκτρολογώντας 'p'.\n>>> ")
+                    word = input("Η λέξη σου δεν υπάρχει στο λεξικό. Ξαναδοκίμασε ή αν δεν βρίσκεις λέξη μπορείς να πας πάσο πληκτρολογώντας 'p' ή 'q' για να σταματήσεις.\n>>> ")
             else:
-                word = input("Η λέξη σου δεν αποτελείται από τα διαθέσιμα γράμματα. Ξαναδοκίμασε ή αν δεν βρίσκεις λέξη μπορείς να πας πάσο πληκτρολογώντας 'p'.\n>>> ")
+                word = input("Η λέξη σου δεν αποτελείται από τα διαθέσιμα γράμματα. Ξαναδοκίμασε ή αν δεν βρίσκεις λέξη μπορείς να πας πάσο πληκτρολογώντας 'p' ή 'q' για να σταματήσεις.\n>>> ")
             
         return word
     
@@ -174,7 +175,6 @@ class Game:
         self.playerScore = 0
         self.player.availableLetters = self.sak.getletters(7)
         self.computer.availableLetters = self.sak.getletters(7)
- #- len(self.player.availableLetters)
 
     def run(self):
         userinput = self.menu()
@@ -186,12 +186,15 @@ class Game:
                 self.changeSettings()
             elif (userinput == '3'):
                 input("Το παιχνίδι θα ξεκινήσει. Είσαι έτοιμος; (Πάτα ENTER)")
-                self.start()
+                self.setup()
+                condition = self.start()
+                if (condition != "quit"):
+                    self.announceWinner()
+                    self.end()
             else:
                 print("Δεν υπάρχει αυτή η επιλογή. Δοκίμασε ξανά.")
-
             userinput = self.menu()
-        self.end()
+        
 
     def start(self):
         # μονός: υπολογιστής
@@ -204,15 +207,27 @@ class Game:
                 print(self.getLettersAndValues(self.player.availableLetters))
                 word = self.player.play(self.player.availableLetters)
                 if (word == "p"):
+                    if (len(self.sak.sak) < 7):
+                        # δεν υπάρχουν αρκετά γράμματα
+                        return
                     print("Πήγες πάσο.")
                     self.sak.putbackletters(self.player.availableLetters)
                     self.player.availableLetters = self.sak.getletters(7)
+                elif (word == "q"):
+                    areyousure = input("Είσαι σίγουρος ότι θέλεις να σταματήσεις; (Πάτα ENTER για ΝΑΙ ή 'Ο' για ΌΧΙ)\n>>> ")
+                    if (areyousure == 'Ο' or areyousure == 'O'):
+                        continue
+                    return "quit"
                 else:
                     value = self.sak.getwordvalue(word)
                     print("Έπαιξες: {} και πήρες {} πόντους.".format(word, value))
                     self.playerScore += value
                     for l in word:
                         self.player.availableLetters.pop(self.player.availableLetters.index(l))
+                if (len(self.sak.sak) < len(self.player.availableLetters)):
+                    # δεν υπάρχουν αρκετά γράμματα
+                    self.moves += 1
+                    return
                 self.player.availableLetters += self.sak.getletters(7 - len(self.player.availableLetters))
             else:
                 # computer
@@ -220,6 +235,9 @@ class Game:
                 print(self.getLettersAndValues(self.computer.availableLetters))
                 word = self.computer.play(self.computer.availableLetters, self.settings)
                 if (word == "pass"):
+                    if (len(self.sak.sak) < 7):
+                        # δεν υπάρχουν αρκετά γράμματα
+                        return
                     print("Ο υπολογιστής πήγε πάσο.")
                     self.sak.putbackletters(self.computer.availableLetters)
                     self.computer.availableLetters = self.sak.getletters(7)
@@ -229,9 +247,23 @@ class Game:
                     self.computerScore += value
                     for l in word:
                         self.computer.availableLetters.pop(self.computer.availableLetters.index(l))
+                if (len(self.sak.sak) < len(self.computer.availableLetters)):
+                    # δεν υπάρχουν αρκετά γράμματα
+                    self.moves += 1
+                    return
                 self.computer.availableLetters += self.sak.getletters(7 - len(self.computer.availableLetters))
             self.moves += 1
             print("Νέο σκορ: (Εσύ){} - (Υπολογιστής){}".format(self.playerScore, self.computerScore))
+
+    def announceWinner(self):
+        print("Το παιχνίδι τελείωσε με σκορ (Εσύ){}/(Υπολογιστής){}.".format(self.playerScore, self.computerScore))
+        if (self.playerScore > self.computerScore):
+            print("Νίκησες!")
+        elif (self.playerScore < self.computerScore):
+            print("Νίκησε ο υπολογιστής.")
+        else:
+            print("Ισοπαλία!")
+        input("Πάτα ENTER για να επιστρέψεις στο μενού.")
 
     def getLettersAndValues(self, letters):
         str = ''
@@ -241,7 +273,15 @@ class Game:
 
     def end(self):
         # save in json
-        pass
+        print("Αποθήκευση στατιστικών...")
+        with open('score.json') as json_file:
+            data = json.load(json_file)
+            newentry = '"moves": {}, "player": {}, "computer": {}'.format(self.moves, self.playerScore, self.computerScore)
+            newentry = "{" + newentry + "}"
+        
+        with open('score.json', 'w') as json_file:
+            data.append(json.loads(newentry))
+            json.dump(data, json_file, ensure_ascii=True, indent=4, sort_keys=True)
 
     def changeSettings(self):
         userinput = input("""___ΡΥΘΜΙΣΕΙΣ___
@@ -263,15 +303,19 @@ class Game:
 
     def menu(self):
         return input("""~~~~ SCRABBLE ~~~~
-------------------
+__________________
 1: Σκορ
 2: Ρυθμίσεις
 3: Παιχνίδι
 q: Έξοδος
-------------------
+__________________
 >>> """)
 
     def printScore(self):
-        print("""___ΣΚΟΡ___
-Εσύ: {}
-Υπολογιστής: {}""".format(self.playerScore, self.computerScore))
+        with open('score.json') as json_file:
+            data = json.load(json_file)
+            print('_____ΣΚΟΡ ΑΝΑ ΠΑΙΧΝΙΔΙ_____')
+            for i in range(len(data)):
+                print("{}) εσύ: {}  | υπολογιστής: {}  | συνολικές κινήσεις: {}".format(i+1, data[i]["moves"], data[i]["player"], data[i]["computer"]))
+
+        input("Πάτα ENTER για να επιστρέψεις στο μενού...")
