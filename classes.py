@@ -67,7 +67,7 @@ class Player:
         self.availableLetters = []
 
     def __repr__(self):
-        return repr("Κλάση Player")
+        return f'Κλάση: {self.__class__}, Διαθέσιμα γράμματα: {self.availableLetters}'
 
     def getAcceptedWords(self):
         # returns dictionary with all accepted words
@@ -89,7 +89,7 @@ class Human(Player):
         super().__init__()
 
     def __repr__(self):
-        return repr("Κλάση Human, απόγονος της Player")
+        return f'Κλάση: {self.__class__}, Διαθέσιμα γράμματα: {self.availableLetters}'
 
     def play(self, word):
         word = input("Πληκτρολόγησε την λέξη σου. Αν δεν βρίσκεις μπορείς να πας πάσο πληκτρολογώντας 'p' ή 'q' για να σταματήσεις.\n>>> ")
@@ -119,7 +119,7 @@ class Computer(Player):
         super().__init__()
 
     def __repr__(self):
-        return repr("Κλάση Computer, απόγονος της Player")
+        return f'Κλάση: {self.__class__}, Διαθέσιμα γράμματα: {self.availableLetters}'
 
     def play(self, letters, mode):
         # letters: available letters
@@ -162,7 +162,7 @@ class Game:
         pass
 
     def __repr__(self):
-        return repr("Κλάση Game.")
+        return f'Κλάση: {self.__class__}, mode: {self.settings}'
 
     def setup(self):
         self.sak = SakClass()
